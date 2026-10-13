@@ -108,9 +108,15 @@ Rules that turned out to matter:
 One `/cycle run` is five phases, each stage in a child session of its own, while the cycle
 session only coordinates:
 
-1. **Audit and drain.** `/audit` reviews code units in rotation (never reviewed first,
-   then most changed) and turns verified findings into rows. `/drain` reads every
-   WATCH and RUN-EVIDENCE row against production and closes, re-opens or advances it.
+1. **Audit, security and drain.** `/audit` reviews each code unit through six separate
+   lenses (rule violations including hidden defaults, duplicate code, dead code and best
+   practice, domain correctness, tests and latency, security), each with its own review
+   record. The rotation takes never-reviewed code first, then changed code, then a catch-up
+   for any lens that has never read a unit, then anything older than 30 days. Every finding
+   goes to skeptic agents that try to disprove it, then the coordinator re-reads the cited
+   lines before it becomes a board row. A daily `/security` stage reads the live cloud
+   account and servers for exposure. `/drain` reads every WATCH and RUN-EVIDENCE row
+   against production and closes, re-opens or advances it.
    Beside them: dependency upgrades, mutation testing, `/changes` (what each external API we
    depend on has published since we last looked), and a weekly `/rules` review of the rule
    files themselves.
