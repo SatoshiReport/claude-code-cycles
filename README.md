@@ -108,18 +108,15 @@ Rules that turned out to matter:
 One `/cycle run` is five phases, each stage in a child session of its own, while the cycle
 session only coordinates:
 
-1. **Audit, security and drain.** `/audit` reviews each code unit through six separate
-   lenses (rule violations including hidden defaults, duplicate code, dead code and best
-   practice, domain correctness, tests and latency, security), each with its own review
-   record. The rotation takes never-reviewed code first, then changed code, then a catch-up
-   for any lens that has never read a unit, then anything older than 30 days. Every finding
-   goes to skeptic agents that try to disprove it, then the coordinator re-reads the cited
-   lines before it becomes a board row. A daily `/security` stage reads the live cloud
-   account and servers for exposure. `/drain` reads every WATCH and RUN-EVIDENCE row
-   against production and closes, re-opens or advances it.
-   Beside them: dependency upgrades, mutation testing, `/changes` (what each external API we
-   depend on has published since we last looked), and a weekly `/rules` review of the rule
-   files themselves.
+1. **Audit, drain and the weekly checks.** `/audit` reviews the code unit by unit (see
+   "How the audit works" below). `/drain` reads every WATCH and RUN-EVIDENCE row against
+   production and closes, re-opens or advances it. Beside them: dependency upgrades,
+   mutation testing, `/changes` (what each external API we depend on has published since we
+   last looked), a weekly `/rules` review of the rule files themselves, and a weekly
+   `/security` read of the live cloud account and servers for exposure (open ports, public
+   addresses, keys, logging and alerting switched off). The security check is read-only:
+   each finding becomes a board row, and the fix lands in the script that provisions the
+   resource, never as a hand change.
 2. **Spec.** `/spec` researches open BUILD rows and stamps each with a premise, the files it
    touches, size and difficulty, the verification read, and the alarm it must ship with.
 3. **Wave.** `/wave` composes a frontier of spec'd rows, dispatches delegates in parallel,
@@ -134,6 +131,34 @@ until the board holds no buildable row.
 
 Children report to the parent over cross-session messages. A child is a normal Claude Code
 session, so it shows in the Claude app and the human can open any one of them from the phone.
+
+### How the audit works
+
+- **Six lenses, recorded separately.** Each code unit is read by one finder agent per lens:
+  rule violations (every hidden default swept), duplicate code, dead code and best practice,
+  domain correctness, tests and latency, and security. Each lens keeps its own record of
+  what it has read and at which commit.
+- **What gets read next.** Never-reviewed code first, then code that changed since its last
+  review, then a catch-up for any lens that has never read a unit, then a **rule sweep**:
+  when a rule is added or widened, every unit a lens read before that date is read again
+  for it. A lens that has read a unit before reports only on the code changed since.
+- **Every finding names its impact.** Money, a silent failure, a wrong value on screen, a
+  crash or stall, security, drift between two copies of one fact, a defect the code's
+  shape invites (the wrong value, branch or edit named), or a written coding rule it
+  breaks. Findings that are only taste, from a fixed list, are dropped.
+- **Two rounds of disproof.** Skeptic agents try to refute each finding, then the
+  coordinator re-reads the cited lines and drops anything that fails or whose impact does
+  not hold. Each finding that survives becomes a board row citing `file:line`.
+- **Reversals go to the human.** A finding that would undo an earlier design decision or a
+  closed row is never built directly; it becomes a question for the human in the five-part
+  form, naming the decision and what has changed since.
+- **The audit improves its own rules.** A real defect that no rule names becomes a candidate
+  rule: it is added to that lens, a rule sweep is scheduled over old code, and the build
+  reviewer's checklist picks it up for new code.
+- **Every finding is traced to the commit that wrote it.** The audit records whether the
+  bad line passed through review or reached the tree by a path that skips review. A finding
+  that review missed becomes a row to strengthen the reviewer's checklist or add a guard; a
+  cluster of unreviewed commits becomes a row to route that path through review.
 
 ## 4. Hooks: refuse the mistake when it is made
 
